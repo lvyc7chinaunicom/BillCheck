@@ -1,6 +1,7 @@
 package com.kafka;
 
 import com.sun.org.apache.xerces.internal.dom.PSVIAttrNSImpl;
+import jdk.nashorn.internal.ir.ContinueNode;
 import kafka.api.FetchRequest;
 import kafka.api.FetchRequestBuilder;
 import kafka.api.PartitionOffsetRequestInfo;
@@ -29,9 +30,9 @@ public class test {
     //redis中记录的已读偏移
     private long targetOffset = -1;
     //消费到的msg列表
-    private ArrayList<String> msgList = new ArrayList<>();
+    private ArrayList<String> result = new ArrayList<>();
     //一次消费的量
-    private long maxReads = 10;
+    private long maxReads = 1000;
 
     List<String> brokers = Arrays.asList("10.161.11.156", "10.161.11.157", "10.161.11.158", "10.161.11.159", "10.161.11.160", "10.161.11.161", "10.161.11.162", "10.161.11.163", "10.161.11.164", "10.161.11.165", "10.161.11.166", "10.161.11.167", "10.161.11.168", "10.161.11.169", "10.161.11.170");
     List<Integer> ports = new ArrayList<>(Arrays.asList(6667, 6667, 6667, 6667, 6667, 6667, 6667, 6667, 6667, 6667, 6667, 6667, 6667, 6667, 6667));
@@ -45,33 +46,35 @@ public class test {
 
     public void tt() {
         try {
-            for (int j = 0; j < 6; j++) {
-                getMsg(msgList, maxReads, targetOffset, topic, partition, brokers, ports);
-                if (msgList.size() != 0) {
-                    msgList.stream().forEach(System.out::println);
+            for (int j = 0; j < 100; j++) {
+                result = getMsg(maxReads, targetOffset, topic, partition, brokers, ports);
+                if (result.size() != 0) {
+//                    result.stream().forEach(System.out::println);
+                    System.out.println("取数正常");
                 } else {
                     System.out.println("没有取到数据");
                 }
                 targetOffset += maxReads;
                 System.out.println("targetOffset:" + targetOffset);
-                msgList.clear();
+                result.clear();
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void getMsg(ArrayList<String> msgList, long a_maxReads, long targetOffset, String a_topic,
-                        int a_partition, List<String> a_seedBrokers, List<Integer> a_ports) throws Exception {
+    private ArrayList<String> getMsg(long a_maxReads, long targetOffset, String a_topic,
+                                     int a_partition, List<String> a_seedBrokers, List<Integer> a_ports) throws Exception {
+        ArrayList<String> msgList = new ArrayList<>();
         // find the meta data about the topic and partition we are interested in
         PartitionMetadata metadata = findLeader(a_seedBrokers, a_ports, a_topic, a_partition);
         if (metadata == null) {
             logger.error("Can't find metadata for Topic and Partition. Exiting");
-            return;
+            return msgList;
         }
         if (metadata.leader() == null) {
             logger.error("Can't find Leader for Topic and Partition. Exiting");
-            return;
+            return msgList;
         }
         String leadBroker = metadata.leader().host();
         int a_port = metadata.leader().port();
@@ -89,13 +92,13 @@ public class test {
 
         //若目标偏移大于kafka中最新偏移
         if (targetOffset > latestOffset) {
-            //将要读的偏移置为最新
+            //将要读的偏移置为最新偏移
             readOffset = latestOffset;
+        } else if (targetOffset > readOffset) {
+            //将要读的偏移置设置为目标偏移
+            readOffset = targetOffset;
         } else {
-            if (targetOffset > readOffset) {
-                //目则将要读的偏移置为目标偏移
-                readOffset = targetOffset;
-            }
+            readOffset = latestOffset;
         }
         this.targetOffset = readOffset;
         //System.out.println("offset:" + readOffset);
@@ -172,7 +175,7 @@ public class test {
             }
         }
         if (consumer != null) consumer.close();
-        return;
+        return msgList;
     }
 
     public static long getLastOffset(SimpleConsumer consumer, String topic, int partition,
