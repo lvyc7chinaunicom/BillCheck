@@ -16,7 +16,7 @@ import java.util.logging.Logger;
  */
 public class test1 {
 
-    String topic = "CdrFirstFilter";
+    String topic = "CdrNormal";
 
     public static void main(String[] args) {
         new test1().run();
