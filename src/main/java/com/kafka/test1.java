@@ -38,7 +38,7 @@ public class test1 {
 
         try {
             for (int i = 0; i < 100; i++) {
-                ConsumerRecords<String, String> records = consumer.poll(1000);
+                ConsumerRecords<String, String> records = consumer.poll(100);
                 for (ConsumerRecord<String, String> record : records) {
                     System.out.println(String.format("topic = %s, partition = %s, offset = %d, customer = %s, country = %s\n",
                             record.topic(),
